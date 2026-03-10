@@ -51,7 +51,7 @@ Make architectural and sequencing decisions.
 5. Identify risks and decide rollback strategy per step.
 6. Make key design decisions and record rationale ("chose A because B fails under X, C adds unnecessary complexity").
 7. Determine workflow mode:
-   - **Git projects with CI**: full branch workflow (branch → Opus review → push → CI green → `/pr` merge). This is the default.
+   - **Git projects with CI**: full branch workflow (branch → Opus review → push → CI green → squash merge via gh CLI). This is the default.
    - **Non-git or docs-only tasks**: direct workflow (edit files in place, no branch/PR). Agent judges which mode applies.
 
 ## Phase 3 — Draft
@@ -106,13 +106,30 @@ After push, CI must pass before merge.
 1. After push: `gh run list -b <branch> --limit 1` to find the CI run.
 2. Wait for CI: `gh run watch <run-id>`. Never proceed while CI is pending.
 3. If CI fails: diagnose locally → fix → commit → re-review (Opus gate) → push → wait for CI again. Never merge a red branch.
-4. After CI is green: use `/pr` skill to create PR and merge (squash merge via GitHub).
+4. After CI is green: `gh pr create --title '{step title}' --body '{summary}' && gh pr merge --squash --delete-branch`. If pre-flight found no `gh` auth, this step is omitted entirely (plan uses direct workflow).
 5. After merge: `git checkout {default-branch} && git pull origin {default-branch}`. Verify merge commit.
 
 ### Zero-tolerance CI policy
 - A CI failure that reaches `main` is a **P0 construction incident** — permanent, public, damages project credibility.
 - If a step's CI fails 3 times consecutively, **stop execution**. Report to user with: what failed, what was tried, root cause hypothesis.
 - When sequencing multiple PR merges, verify CI passes at each stage before proceeding to the next.
+
+## Agent Autonomy Boundary
+
+Operations are classified by reversibility. Executing agents must respect these boundaries.
+
+**Autonomous** (execute without asking):
+- branch, add, commit, build, test, lint — all local and reversible
+
+**User-confirmed** (ask before executing):
+- push, PR create, PR merge, force operations (push --force, reset --hard, rebase), remote configuration changes, tag creation + push — all remote-visible or hard to reverse
+- Confirm with user before the first push of each branch. Subsequent pushes to the same branch (e.g., after fixing CI) may proceed without re-confirmation.
+
+**Sequencing with review gate** (branch-workflow plans):
+1. Complete work + commit locally
+2. Opus sub-agent review + fix findings
+3. Ask user permission to push
+4. Push to remote
 
 ## Steps
 
@@ -172,7 +189,7 @@ Review checklist for the sub-agent:
 5. **Rollback coverage** — does every step have a rollback strategy? Is "discard worktree" actually sufficient or would data be lost?
 6. **Invariant sufficiency** — do the invariants catch real regressions? Are any missing?
 7. **Exit criteria testability** — can each exit criterion be verified by running a command? Vague criteria like "code is clean" are rejected.
-8. **Branch workflow compliance** — does every step follow the branch naming, Opus review gate, CI gate, and `/pr` merge rules?
+8. **Branch workflow compliance** — does every step follow the branch naming, Opus review gate, CI gate, and gh CLI merge procedure?
 9. **Risk assessment** — are the riskiest steps identified? Do they have worktree isolation and manual verification?
 10. **CLAUDE.md compliance** — does anything in the plan contradict project or workspace rules?
 
