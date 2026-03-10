@@ -12,3 +12,6 @@ Phase 4 review checklist for Opus sub-agent. Execute each item against the plan.
 8. **Branch workflow compliance** — does every step follow the branch naming, Opus review gate, CI gate, and gh CLI merge procedure?
 9. **Risk assessment** — are the riskiest steps identified? Do they have worktree isolation and manual verification?
 10. **CLAUDE.md compliance** — does anything in the plan contradict project or workspace rules?
+11. **Anti-pattern scan** — does the plan contain any pattern from `references/anti-patterns.md`?
+12. **Verification command validity** — are the commands in each step's Verification section real commands that exist in the project? Check against package.json scripts, Makefile targets, or CI workflow definitions.
+13. **Self-consistency** — does the plan violate any of its own stated principles? Check: (a) do any steps violate the anti-patterns from `references/anti-patterns.md`? (b) do exit criteria contradict invariants? (c) do design decisions contradict each other?
