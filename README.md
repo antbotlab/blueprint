@@ -121,17 +121,16 @@ This scans your codebase, designs a step-by-step plan, reviews it with an Opus s
 
 ## How Blueprint Differs from `/plan`
 
-Claude Code's built-in `/plan` works well for single-session tasks. Blueprint is designed for everything beyond that:
+Claude Code's built-in `/plan` generates a persisted Markdown plan and works well for straightforward tasks. Blueprint is designed for multi-session, multi-agent projects where each step must be independently executable:
 
 | | `/plan` | `/blueprint` |
 |---|---|---|
 | Zero setup | Yes — built in | Requires install |
-| Best for single-session tasks | Yes | Overkill |
-| Survives session restart | No — lives in context window | Yes — persisted Markdown file |
-| Cold-start executable | No — requires conversation history | Yes — each step is self-contained |
+| Persisted plan file | Yes — `~/.claude/plans/` | Yes — project `plans/` directory |
+| Cold-start steps | No — steps assume shared context | Yes — each step has a self-contained context brief |
 | Adversarial review | No | Yes — Opus sub-agent review gate |
 | Branch/PR/CI workflow | No | Yes — built into every step |
-| Cross-session resumption | No | Yes — Progress Log tracks state |
+| Dependency graph | No | Yes — parallel groups and serial constraints |
 | Plan mutation protocol | No | Yes — split, insert, skip, reorder, abandon |
 
 ## How It Works
@@ -168,4 +167,4 @@ Pull requests welcome — please open an issue first to discuss non-trivial chan
 
 ## License
 
-[MIT](LICENSE)
+[MIT](./LICENSE) &copy; 2026 antbotlab
