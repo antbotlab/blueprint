@@ -9,6 +9,10 @@ plan-format: 1
 
 ## Constraints
 - Sub-agents: read project CLAUDE.md before starting work
+- Model tiers — each step's `**Agent**:` field specifies the required model tier. Map to your provider's models:
+  - `strongest` = most capable model available (e.g., Opus). Use for architecture, review, risk assessment.
+  - `default` = standard model (e.g., Sonnet). Use for implementation, testing, standard tasks.
+  - When spawning sub-agents, select the model matching this tier (e.g., in Claude Code: `model: "opus"` for strongest, `model: "sonnet"` or omit for default).
 - {project-specific constraints}
 
 ## Prerequisites
@@ -45,7 +49,7 @@ Not all plan content carries the same level of constraint. Executing agents must
 ### Step {NN}: {title} [ ]
 
 **Size**: S / M / L
-**Agent**: Sonnet / Opus
+**Agent**: default / strongest
 
 **Context** (cold-start brief):
 {Minimum background for an agent that has NOT read previous steps.

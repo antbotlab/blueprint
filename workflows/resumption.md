@@ -32,7 +32,7 @@ Steps must not rely on implicit knowledge accumulated from reading prior steps. 
 
 **Scenario A — Clean resume**: Progress Log shows Steps 01-03 `[x]`, Step 04 `[ ]`. Resume at Step 04.
 
-**Scenario B — Interrupted step**: Progress Log shows Step 05 `[>]`. Branch `myapp-step-05-auth` exists with 2 commits. Check exit criteria — if not met, continue work on the existing branch. If met but not merged, proceed to Opus review and push.
+**Scenario B — Interrupted step**: Progress Log shows Step 05 `[>]`. Branch `myapp-step-05-auth` exists with 2 commits. Check exit criteria — if not met, continue work on the existing branch. If met but not merged, proceed to strongest-model review and push.
 
 **Scenario C — Branch lost**: Progress Log shows Step 03 `[>]`. No branch found. Treat as `[ ]`, start fresh. Log the restart in the Progress Log Notes.
 

@@ -5,7 +5,7 @@
 ### Added
 
 - Progressive disclosure file structure: main skill file (≤300 lines) with dedicated subdirectories for templates, references, workflows, and examples
-- Graceful degradation: memory system, Opus model, GitHub CLI, and default branch all degrade gracefully when unavailable
+- Graceful degradation: memory system, strongest model (e.g., Opus), GitHub CLI, and default branch all degrade gracefully when unavailable
 - Anti-pattern catalog: 10 planning anti-patterns with fixes and 6 rationalization rebuttals
 - Plan mutation protocol: formal rules for splitting, inserting, skipping, reordering, and abandoning plan steps mid-execution
 - Execution resumption protocol: 5-step procedure for resuming partially-executed plans in new sessions

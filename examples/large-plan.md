@@ -7,6 +7,10 @@ Extract the hardcoded scheduler module from `taskflow` core into a standalone pl
 
 ## Constraints
 - Sub-agents: read project CLAUDE.md before starting work
+- Model tiers — each step's `**Agent**:` field specifies the required model tier. Map to your provider's models:
+  - `strongest` = most capable model available (e.g., Opus). Use for architecture, review, risk assessment.
+  - `default` = standard model (e.g., Sonnet). Use for implementation, testing, standard tasks.
+  - When spawning sub-agents, select the model matching this tier (e.g., in Claude Code: `model: "opus"` for strongest, `model: "sonnet"` or omit for default).
 - Zero runtime regressions: existing users who install `@taskflow/plugin-scheduler` alongside core must get identical scheduling behavior to pre-extraction
 - The core package (`@taskflow/core`) must have zero scheduler-specific imports after extraction
 - Monorepo structure: `packages/core`, `packages/plugin-scheduler`, using pnpm workspace
@@ -24,7 +28,7 @@ Extract the hardcoded scheduler module from `taskflow` core into a standalone pl
 1. **Plugin interface over abstract class**: Define `SchedulerPlugin` as a TypeScript interface, not an abstract base class. Rationale: interfaces have zero runtime footprint, do not couple the plugin to the core's class hierarchy, and are easier to mock in tests. The core uses duck-typing validation at registration time.
 2. **Lazy loading via plugin registry**: The scheduler plugin registers itself through `taskflow`'s existing plugin registry (`registerPlugin()`). Core discovers it at startup, not at import time. Rationale: avoids circular dependency between core and plugin; aligns with the established pattern used by `plugin-logger` and `plugin-metrics`.
 3. **Default scheduler bundled as plugin**: The current built-in scheduler becomes `@taskflow/plugin-scheduler` with no behavioral changes. Users who install `@taskflow/core` without the scheduler plugin get a clear error at runtime: "No scheduler plugin registered. Install @taskflow/plugin-scheduler or a compatible alternative." Rationale: explicit > implicit; forcing registration prevents silent fallback to a no-op scheduler that would hide misconfiguration.
-4. **Step 05 split into 05a/05b**: During planning review, Opus identified that the original Step 05 ("Extract scheduler and write plugin tests") was a mega-step touching 18+ files. Split into: 05a (move files + update imports) and 05b (write plugin-specific tests). See Review Log.
+4. **Step 05 split into 05a/05b**: During planning review, the strongest-model review identified that the original Step 05 ("Extract scheduler and write plugin tests") was a mega-step touching 18+ files. Split into: 05a (move files + update imports) and 05b (write plugin-specific tests). See Review Log.
 5. **Shared test utilities stay in core**: `packages/core/test/helpers/` contains shared test factories and mocks. These remain in core (not duplicated to the plugin) and are imported by plugin tests via workspace path. Rationale: DRY; the helpers are used by 6 other test files in core.
 
 ## Invariants
@@ -41,11 +45,11 @@ Extract the hardcoded scheduler module from `taskflow` core into a standalone pl
 - Always branch from latest default branch (detected in Phase 1 pre-flight): `git pull origin main && git checkout -b <branch>`
 - One branch per step. Never bundle multiple steps into one branch.
 
-### Pre-push Opus review gate
-Every branch must pass an Opus-level review before pushing to remote. No exceptions.
+### Pre-push strongest-model review gate
+Every branch must pass a strongest-model review before pushing to remote. No exceptions.
 1. Executing agent completes all tasks and runs verification locally.
 2. Executing agent commits all changes on the feature branch.
-3. **Before `git push`**: delegate review to an Opus sub-agent. If the executing agent is already Opus, self-review is acceptable — the gate's purpose is to ensure Opus-level scrutiny, not to require a separate agent. The agent must still perform a structured review against the same criteria.
+3. **Before `git push`**: delegate review to a strongest-model sub-agent. If the executing agent is already the strong model, self-review is acceptable — the gate's purpose is to ensure strongest-model scrutiny, not to require a separate agent. The agent must still perform a structured review against the same criteria.
    - Prompt: "Review all commits on branch `{branch}` against `main`. Check: correctness, edge cases, consistency with existing code, CLAUDE.md compliance, security. Return a structured list of findings (critical / important / minor)."
    - If critical or important findings: fix, commit, re-review. Iterate until clean.
    - Minor findings: fix if trivial, otherwise log in Progress Log.
@@ -55,7 +59,7 @@ Every branch must pass an Opus-level review before pushing to remote. No excepti
 After push, CI must pass before merge.
 1. After push: `gh run list -b <branch> --limit 1` to find the CI run.
 2. Wait for CI: `gh run watch <run-id>`. Never proceed while CI is pending.
-3. If CI fails: diagnose locally → fix → commit → re-review (Opus gate) → push → wait for CI again. Never merge a red branch.
+3. If CI fails: diagnose locally → fix → commit → re-review (strongest-model gate) → push → wait for CI again. Never merge a red branch.
 4. After CI is green: `gh pr create --title '{step title}' --body '{summary}'`. Then merge: `gh pr merge --squash --delete-branch`. If `gh pr merge` fails due to branch protection rules (required reviewers, pending PR-specific status checks, merge queue), report the blocker to the user and wait for resolution before proceeding. If pre-flight found no `gh` auth, this step is omitted entirely (plan uses direct workflow).
 5. After merge: `git checkout main && git pull origin main`. Verify merge commit.
 
@@ -77,7 +81,7 @@ Operations are classified by reversibility. Executing agents must respect these 
 
 **Sequencing with review gate** (branch-workflow plans):
 1. Complete work + commit locally
-2. Opus sub-agent review + fix findings
+2. Strongest-model review + fix findings
 3. Ask user permission to push
 4. Push to remote
 
@@ -96,7 +100,7 @@ Not all plan content carries the same level of constraint. Executing agents must
 **Branch**: `taskflow-step-01-scheduler-interface`
 **Size**: S
 **Isolation**: main-tree
-**Agent**: Opus
+**Agent**: strongest
 
 **Context** (cold-start brief):
 The `taskflow` project is a TypeScript monorepo (`packages/core`) that has a hardcoded scheduler module at `packages/core/src/scheduler/`. The project uses a plugin registry (`registerPlugin()` in `packages/core/src/plugin-registry.ts`) that currently handles `plugin-logger` and `plugin-metrics`. This step defines the `SchedulerPlugin` interface that the scheduler must implement, following the same pattern as existing plugins. See Design Decision #1 for why interface was chosen over abstract class.
@@ -128,7 +132,7 @@ The `taskflow` project is a TypeScript monorepo (`packages/core`) that has a har
 **Branch**: `taskflow-step-02-registry-slot`
 **Size**: S
 **Isolation**: main-tree
-**Agent**: Sonnet
+**Agent**: default
 
 **Context** (cold-start brief):
 The `taskflow` plugin registry (`packages/core/src/plugin-registry.ts`) currently supports `logger` and `metrics` plugin slots. Step 01 added a `SchedulerPlugin` interface to `packages/core/src/types/`. This step adds a `scheduler` slot to the registry so plugins implementing `SchedulerPlugin` can register themselves. The registry uses duck-typing validation (Design Decision #1) — it checks that registered objects implement the required interface methods at registration time.
@@ -158,7 +162,7 @@ The `taskflow` plugin registry (`packages/core/src/plugin-registry.ts`) currentl
 **Branch**: `taskflow-step-03-plugin-scaffold`
 **Size**: S
 **Isolation**: main-tree
-**Agent**: Sonnet
+**Agent**: default
 
 **Context** (cold-start brief):
 The `taskflow` monorepo uses pnpm workspaces with packages under `packages/`. Two plugin slots exist in the registry: `logger`, `metrics`, and now `scheduler` (added in Step 02). This step creates the `@taskflow/plugin-scheduler` package directory structure without moving any code yet — just the scaffolding. Follow the existing structure of `packages/plugin-logger/` as the reference template.
@@ -195,7 +199,7 @@ The `taskflow` monorepo uses pnpm workspaces with packages under `packages/`. Tw
 **Branch**: `taskflow-step-04-redirect-calls`
 **Size**: M
 **Isolation**: worktree
-**Agent**: Opus
+**Agent**: strongest
 
 **Context** (cold-start brief):
 The `taskflow` core currently calls the scheduler directly via `import { Scheduler } from './scheduler/index.js'` in multiple places (`packages/core/src/runner.ts`, `packages/core/src/lifecycle.ts`, `packages/core/src/api/schedule-endpoint.ts`). The plugin registry now has a `scheduler` slot with `getScheduler()` (Step 02). This step replaces all direct scheduler imports with calls to `getScheduler()`, which is the critical bridge step that decouples core from the scheduler implementation. This is the riskiest step — it changes core's runtime behavior path. Worktree isolation ensures the main tree stays clean.
@@ -226,7 +230,7 @@ The `taskflow` core currently calls the scheduler directly via `import { Schedul
 **Branch**: `taskflow-step-05a-move-files`
 **Size**: M
 **Isolation**: worktree
-**Agent**: Sonnet
+**Agent**: default
 
 **Context** (cold-start brief):
 The `taskflow` core's scheduler implementation lives at `packages/core/src/scheduler/` (files: `index.ts`, `queue.ts`, `cron-parser.ts`, `types.ts`). Step 04 already redirected all core imports to go through the plugin registry instead of directly importing the scheduler. The plugin package scaffolding exists at `packages/plugin-scheduler/` (Step 03). This step moves the implementation files from core to the plugin package and wires them up as a proper plugin that registers itself. This was originally part of a combined "Step 05" but was split because the original touched 18+ files — see Design Decision #4 and Review Log.
@@ -265,7 +269,7 @@ The `taskflow` core's scheduler implementation lives at `packages/core/src/sched
 **Branch**: `taskflow-step-05b-plugin-tests`
 **Size**: M
 **Isolation**: worktree
-**Agent**: Sonnet
+**Agent**: default
 
 **Context** (cold-start brief):
 The scheduler implementation has been moved from `packages/core/src/scheduler/` to `packages/plugin-scheduler/src/` (Step 05a). The plugin registers itself via `registerPlugin('scheduler', ...)`. The existing scheduler tests in `packages/core/test/scheduler/` tested the implementation directly — they need to be migrated to the plugin package and adapted to test through the plugin interface. Shared test utilities in `packages/core/test/helpers/` are reused via workspace import (Design Decision #5).
@@ -298,7 +302,7 @@ The scheduler implementation has been moved from `packages/core/src/scheduler/` 
 **Branch**: `taskflow-step-06-integration`
 **Size**: M
 **Isolation**: main-tree
-**Agent**: Sonnet
+**Agent**: default
 
 **Context** (cold-start brief):
 The scheduler has been fully extracted from `packages/core/` into `@taskflow/plugin-scheduler` (Steps 01-05b). Core now discovers the scheduler through the plugin registry. Integration tests in `packages/core/test/integration/` and example files in `examples/` likely still import or reference the scheduler directly from core. This step updates all remaining references to use the plugin.
@@ -333,7 +337,7 @@ The scheduler has been fully extracted from `packages/core/` into `@taskflow/plu
 **Branch**: `taskflow-step-07-no-scheduler-error`
 **Size**: S
 **Isolation**: main-tree
-**Agent**: Sonnet
+**Agent**: default
 
 **Context** (cold-start brief):
 The scheduler is now a plugin (`@taskflow/plugin-scheduler`). If a user installs `@taskflow/core` without any scheduler plugin, calls to `getScheduler()` return `undefined`. Step 04 added basic null checks, but this step adds comprehensive user-facing error handling and a dedicated test suite for the "no scheduler" path. See Design Decision #3 for the rationale behind explicit errors over silent no-op fallback.
@@ -365,7 +369,7 @@ The scheduler is now a plugin (`@taskflow/plugin-scheduler`). If a user installs
 **Branch**: `taskflow-step-08-migration-guide`
 **Size**: S
 **Isolation**: main-tree
-**Agent**: Sonnet
+**Agent**: default
 
 **Context** (cold-start brief):
 The scheduler extraction (Steps 01-07) is complete. Users upgrading from the pre-extraction version need to know: (1) install `@taskflow/plugin-scheduler` as a new dependency, (2) add a registration call in their bootstrap. This step creates a migration guide and updates the changelog. No code changes — documentation only.
@@ -395,7 +399,7 @@ The scheduler extraction (Steps 01-07) is complete. Users upgrading from the pre
 **Branch**: `taskflow-step-09-final-verification`
 **Size**: S
 **Isolation**: main-tree
-**Agent**: Opus
+**Agent**: strongest
 
 **Context** (cold-start brief):
 All extraction steps (01-08) are complete. The scheduler lives in `@taskflow/plugin-scheduler`, core has no scheduler-specific code, documentation is updated. This final step runs a comprehensive verification pass to confirm all invariants hold, cleans up any leftover artifacts, and ensures the monorepo is in a shippable state.
@@ -451,7 +455,7 @@ This table is the single source of truth for execution state.
 | 01   | [x]    | `taskflow-step-01-scheduler-interface` | #42  | Merged. Interface based on existing public API surface. |
 | 02   | [x]    | `taskflow-step-02-registry-slot`       | #43  | Merged. Added 4 registry tests. |
 | 03   | [x]    | `taskflow-step-03-plugin-scaffold`     | #44  | Merged. Followed `plugin-logger` structure. |
-| 04   | [x]    | `taskflow-step-04-redirect-calls`      | #45  | Merged. Found 3 files with direct imports (matched expectation). Updated 12 test files with mock scheduler. Opus review caught a missing null check in `lifecycle.ts` — fixed before push. |
+| 04   | [x]    | `taskflow-step-04-redirect-calls`      | #45  | Merged. Found 3 files with direct imports (matched expectation). Updated 12 test files with mock scheduler. Strongest-model review caught a missing null check in `lifecycle.ts` — fixed before push. |
 | 05a  | [>]    | `taskflow-step-05a-move-files`         | —    | In progress. Files moved, import paths updated. Build passes, typecheck has 2 remaining errors in `cron-parser.ts` import resolution. |
 | 05b  | [ ]    | —                                      | —    | Blocked on 05a. |
 | 06   | [ ]    | —                                      | —    | — |
@@ -461,8 +465,8 @@ This table is the single source of truth for execution state.
 
 ## Review Log
 
-- **2026-03-08**: Opus (plan review) — Finding 1 (critical): Original Step 05 was a mega-step touching 18+ files (move implementation + write tests + update imports). Split into Step 05a (move files, ~10 files) and Step 05b (write tests, ~8 files) per the one-PR-sized heuristic. Finding 2 (important): Step 04 lacked worktree isolation despite being the riskiest step (changes runtime call path in 3+ core files). Added `Isolation: worktree`. Finding 3 (minor): Step 03 Tasks listed `npm` instead of `pnpm` — corrected to match project constraint. All findings fixed.
-- **2026-03-09**: Opus (Step 04 pre-push review) — Finding 1 (important): `lifecycle.ts` used optional chaining (`getScheduler()?.shutdown()`) in the shutdown path, which silently skips cleanup if scheduler is registered but `getScheduler()` returns undefined due to a race condition during shutdown. Changed to explicit null check with warning log. Finding 2 (minor): commit message said "refactor" but this is a behavior change (new runtime path) — suggested `feat(core): route scheduler calls through plugin registry`. Findings fixed, review passed on second iteration.
+- **2026-03-08**: Strongest (plan review) — Finding 1 (critical): Original Step 05 was a mega-step touching 18+ files (move implementation + write tests + update imports). Split into Step 05a (move files, ~10 files) and Step 05b (write tests, ~8 files) per the one-PR-sized heuristic. Finding 2 (important): Step 04 lacked worktree isolation despite being the riskiest step (changes runtime call path in 3+ core files). Added `Isolation: worktree`. Finding 3 (minor): Step 03 Tasks listed `npm` instead of `pnpm` — corrected to match project constraint. All findings fixed.
+- **2026-03-09**: Strongest (Step 04 pre-push review) — Finding 1 (important): `lifecycle.ts` used optional chaining (`getScheduler()?.shutdown()`) in the shutdown path, which silently skips cleanup if scheduler is registered but `getScheduler()` returns undefined due to a race condition during shutdown. Changed to explicit null check with warning log. Finding 2 (minor): commit message said "refactor" but this is a behavior change (new runtime path) — suggested `feat(core): route scheduler calls through plugin registry`. Findings fixed, review passed on second iteration.
 
 ---
 

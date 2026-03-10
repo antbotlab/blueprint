@@ -7,6 +7,10 @@ Reorganize the scattered documentation files in the `webstack` project into a st
 
 ## Constraints
 - Sub-agents: read project CLAUDE.md before starting work
+- Model tiers — each step's `**Agent**:` field specifies the required model tier. Map to your provider's models:
+  - `strongest` = most capable model available (e.g., Opus). Use for architecture, review, risk assessment.
+  - `default` = standard model (e.g., Sonnet). Use for implementation, testing, standard tasks.
+  - When spawning sub-agents, select the model matching this tier (e.g., in Claude Code: `model: "opus"` for strongest, `model: "sonnet"` or omit for default).
 - Preserve all existing content verbatim — this is a reorganization, not a rewrite
 - Do not rename files that are linked from external sources (README.md badge URLs, blog posts). Maintain redirects where necessary.
 - Complete within a single session if possible; the project has a docs deployment that reads from `docs/`
@@ -49,7 +53,7 @@ Not all plan content carries the same level of constraint. Executing agents must
 ### Step 01: Create directory structure and move files [ ]
 
 **Size**: M
-**Agent**: Sonnet
+**Agent**: default
 
 **Context** (cold-start brief):
 The `webstack` project has ~25 markdown doc files scattered across `docs/`, `guides/`, `wiki/`, and the project root. Several naming conventions coexist (PascalCase, kebab-case, spaces). The goal is to consolidate everything under `docs/` with three subdirectories (`guides/`, `api/`, `contributing/`) and normalize all filenames to kebab-case. See Design Decisions for the rationale behind the three-tier hierarchy and naming convention.
@@ -77,7 +81,7 @@ The `webstack` project has ~25 markdown doc files scattered across `docs/`, `gui
 ### Step 02: Build sidebar generator script [ ]
 
 **Size**: S
-**Agent**: Sonnet
+**Agent**: default
 
 **Context** (cold-start brief):
 The `webstack` project now has all docs organized under `docs/` with three subdirectories (`guides/`, `api/`, `contributing/`). The project needs an auto-generated `docs/sidebar.json` that reflects this structure, replacing the previously manual sidebar that had 4 stale entries. Node.js 20+ is available. See Design Decision #2 for why auto-generation was chosen over manual maintenance.
@@ -105,7 +109,7 @@ The `webstack` project now has all docs organized under `docs/` with three subdi
 ### Step 03: Add link validation and integrate into build [ ]
 
 **Size**: S
-**Agent**: Sonnet
+**Agent**: default
 
 **Context** (cold-start brief):
 The `webstack` project's docs are now organized under `docs/` with auto-generated `docs/sidebar.json` (via `scripts/build-sidebar.js`). The final step adds a link validator to catch broken cross-references early, and wires both the sidebar generator and link validator into the existing build pipeline. The Invariant requires all internal doc links to resolve.
@@ -154,7 +158,7 @@ This table is the single source of truth for execution state.
 
 ## Review Log
 
-- **2026-03-10**: Opus — Reviewed 3-step plan. Finding 1 (important): Step 01 Tasks item 5 used `rm -rf` for removing source directories — changed to `rmdir` which only removes empty directories, preventing accidental data loss. Finding 2 (minor): Step 02 sidebar script lacked a sort order specification — added "sorts entries alphabetically within each group" to the task description. No critical findings.
+- **2026-03-10**: Strongest — Reviewed 3-step plan. Finding 1 (important): Step 01 Tasks item 5 used `rm -rf` for removing source directories — changed to `rmdir` which only removes empty directories, preventing accidental data loss. Finding 2 (minor): Step 02 sidebar script lacked a sort order specification — added "sorts entries alphabetically within each group" to the task description. No critical findings.
 
 ---
 

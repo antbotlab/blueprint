@@ -9,6 +9,10 @@ plan-format: 1
 
 ## Constraints
 - Sub-agents: read project CLAUDE.md before starting work
+- Model tiers — each step's `**Agent**:` field specifies the required model tier. Map to your provider's models:
+  - `strongest` = most capable model available (e.g., Opus). Use for architecture, review, risk assessment.
+  - `default` = standard model (e.g., Sonnet). Use for implementation, testing, standard tasks.
+  - When spawning sub-agents, select the model matching this tier (e.g., in Claude Code: `model: "opus"` for strongest, `model: "sonnet"` or omit for default).
 - {project-specific constraints}
 
 ## Prerequisites
@@ -30,11 +34,11 @@ Executing agents must not re-litigate these unless they find factual errors.}
 - Always branch from latest default branch (detected in Phase 1 pre-flight): `git pull origin {default-branch} && git checkout -b <branch>`
 - One branch per step. Never bundle multiple steps into one branch.
 
-### Pre-push Opus review gate
-Every branch must pass an Opus-level review before pushing to remote. No exceptions.
+### Pre-push strongest-model review gate
+Every branch must pass a strongest-model review before pushing to remote. No exceptions.
 1. Executing agent completes all tasks and runs verification locally.
 2. Executing agent commits all changes on the feature branch.
-3. **Before `git push`**: delegate review to an Opus sub-agent. If the executing agent is already Opus, self-review is acceptable — the gate's purpose is to ensure Opus-level scrutiny, not to require a separate agent. The agent must still perform a structured review against the same criteria.
+3. **Before `git push`**: delegate review to a strongest-model sub-agent. If the executing agent is already the strong model, self-review is acceptable — the gate's purpose is to ensure strongest-model scrutiny, not to require a separate agent. The agent must still perform a structured review against the same criteria.
    - Prompt: "Review all commits on branch `{branch}` against `{default-branch}`. Check: correctness, edge cases, consistency with existing code, CLAUDE.md compliance, security. Return a structured list of findings (critical / important / minor)."
    - If critical or important findings: fix, commit, re-review. Iterate until clean.
    - Minor findings: fix if trivial, otherwise log in Progress Log.
@@ -44,7 +48,7 @@ Every branch must pass an Opus-level review before pushing to remote. No excepti
 After push, CI must pass before merge.
 1. After push: `gh run list -b <branch> --limit 1` to find the CI run.
 2. Wait for CI: `gh run watch <run-id>`. Never proceed while CI is pending.
-3. If CI fails: diagnose locally → fix → commit → re-review (Opus gate) → push → wait for CI again. Never merge a red branch.
+3. If CI fails: diagnose locally → fix → commit → re-review (strongest-model gate) → push → wait for CI again. Never merge a red branch.
 4. After CI is green: `gh pr create --title '{step title}' --body '{summary}'`. Then merge: `gh pr merge --squash --delete-branch`. If `gh pr merge` fails due to branch protection rules (required reviewers, pending PR-specific status checks, merge queue), report the blocker to the user and wait for resolution before proceeding. If pre-flight found no `gh` auth, this step is omitted entirely (plan uses direct workflow).
 5. After merge: `git checkout {default-branch} && git pull origin {default-branch}`. Verify merge commit.
 
@@ -66,7 +70,7 @@ Operations are classified by reversibility. Executing agents must respect these 
 
 **Sequencing with review gate** (branch-workflow plans):
 1. Complete work + commit locally
-2. Opus sub-agent review + fix findings
+2. Strongest-model review + fix findings
 3. Ask user permission to push
 4. Push to remote
 
@@ -85,7 +89,7 @@ Not all plan content carries the same level of constraint. Executing agents must
 **Branch**: `{project}-step-{NN}-{short-desc}`
 **Size**: S / M / L
 **Isolation**: worktree / main-tree
-**Agent**: Sonnet / Opus
+**Agent**: default / strongest
 
 **Context** (cold-start brief):
 {Minimum background for an agent that has NOT read previous steps.

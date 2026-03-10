@@ -1,18 +1,15 @@
-![Blueprint — construction plans for AI coding agents](https://github.com/user-attachments/assets/23587ca9-1b58-4257-950d-0a1c144592ef)
+![Blueprint — plans for coding agents](https://github.com/user-attachments/assets/23587ca9-1b58-4257-950d-0a1c144592ef)
 
-# Blueprint
-
-> Turn a one-line objective into a construction plan that any AI agent can execute cold — across sessions, branches, and sub-agents.
+> [!IMPORTANT]
+> Any agent can follow a plan. The hard part is writing steps that don't assume the agent read the ones before. Blueprint generates plans from a one-line objective — each step carries enough context to be executed cold, by a different agent in a different session.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-AI coding agents handle small tasks well, but fall apart on complex projects. They forget context across sessions, re-litigate decisions that were already made, skip verification, and produce work that no other agent can pick up. Blueprint solves this: it generates a self-contained Markdown plan where every step is independently executable, every decision is locked with rationale, and every verification is a command you can run.
-
-Built for developers who use AI coding agents on projects too large for a single session — multi-step refactors, plugin extractions, architecture migrations, and phased feature rollouts. The generated plans are plain Markdown — any AI agent can read and execute them.
+Built for developers working on projects too large for a single agent session — multi-step refactors, plugin extractions, architecture migrations, phased feature rollouts. The generated plans are plain Markdown files that any agent can read and execute.
 
 ## What You Get
 
-A Markdown plan file designed so that a fresh AI agent in a new session can pick up any step and execute it without reading the rest of the plan:
+A Markdown plan file designed so that a fresh agent in a new session can pick up any step and execute it without reading the rest of the plan:
 
 - **Steps** — each one-PR sized, with task list, rollback strategy, verification commands, and exit criteria
 - **Dependency graph** — which steps can run in parallel, which must be serial
@@ -30,7 +27,7 @@ A Markdown plan file designed so that a fresh AI agent in a new session can pick
 **Branch**: `taskflow-step-04-redirect-calls`
 **Size**: M
 **Isolation**: worktree
-**Agent**: Opus
+**Agent**: strongest
 
 **Context** (cold-start brief):
 The core currently calls the scheduler directly via
@@ -89,9 +86,9 @@ git clone https://github.com/antbotlab/blueprint.git ~/.claude/skills/blueprint
 
 Claude Code discovers the skill automatically — `/blueprint` is ready to use.
 
-### Other AI agents
+### Other agents
 
-The generated plans are standard Markdown files. Any AI agent that can read files can execute a Blueprint plan. Point the agent to `SKILL.md` as a system prompt or instruction file, and it will know how to generate and execute plans.
+The generated plans are standard Markdown files. Any agent that can read files can execute a Blueprint plan. Point the agent to `SKILL.md` as a system prompt or instruction file, and it will know how to generate and execute plans.
 
 ### Requirements
 
@@ -103,7 +100,7 @@ The generated plans are standard Markdown files. Any AI agent that can read file
 /blueprint myapp "migrate database to PostgreSQL"
 ```
 
-This scans your codebase, designs a step-by-step plan, reviews it with an Opus sub-agent (falls back to Sonnet if unavailable), and saves it to `plans/myapp-migrate-to-postgresql.md`.
+This scans your codebase, designs a step-by-step plan, reviews it with a strongest-model sub-agent (falls back to default model if unavailable), and saves it to `plans/myapp-migrate-to-postgresql.md`.
 
 ## Key Features
 
@@ -113,11 +110,11 @@ This scans your codebase, designs a step-by-step plan, reviews it with an Opus s
 
 **Living documents** — Plans mutate during execution. Steps can be split, inserted, skipped, reordered, or abandoned — all with formal protocols and an audit trail.
 
-**Adversarial review** — Every plan is reviewed by an Opus sub-agent against a checklist covering completeness, dependency correctness, cold-start viability, anti-pattern detection, and more. Falls back to Sonnet if Opus is unavailable.
+**Adversarial review** — Every plan is reviewed by a strongest-model sub-agent (e.g., Opus) against a checklist covering completeness, dependency correctness, cold-start viability, anti-pattern detection, and more. Falls back to the default model if the strongest model is unavailable.
 
 **Parallel step detection** — The dependency graph identifies steps with no shared files or output dependencies, so they can run concurrently.
 
-**Graceful degradation** — No Opus? Falls back to Sonnet. No GitHub CLI? Switches to direct mode. No project memory? Relies on codebase scanning. Blueprint adapts instead of failing.
+**Graceful degradation** — Strongest model unavailable? Falls back to default. No GitHub CLI? Switches to direct mode. No project memory? Relies on codebase scanning. Blueprint adapts instead of failing.
 
 ## How Blueprint Differs from `/plan`
 
@@ -128,7 +125,7 @@ Claude Code's built-in `/plan` generates a persisted Markdown plan and works wel
 | Zero setup | Yes — built in | Requires install |
 | Persisted plan file | Yes — `~/.claude/plans/` | Yes — project `plans/` directory |
 | Cold-start steps | No — steps assume shared context | Yes — each step has a self-contained context brief |
-| Adversarial review | No | Yes — Opus sub-agent review gate |
+| Adversarial review | No | Yes — strongest-model review gate |
 | Branch/PR/CI workflow | No | Yes — built into every step |
 | Dependency graph | No | Yes — parallel groups and serial constraints |
 | Plan mutation protocol | No | Yes — split, insert, skip, reorder, abandon |
@@ -136,9 +133,9 @@ Claude Code's built-in `/plan` generates a persisted Markdown plan and works wel
 ## How It Works
 
 1. **Research** — Scans the codebase, reads project memory if available, runs pre-flight checks (git repo, gh auth, default branch).
-2. **Design** — Breaks the objective into one-PR-sized steps, identifies parallelism, assigns model tiers (Opus for architecture, Sonnet for implementation), marks risky steps for worktree isolation.
+2. **Design** — Breaks the objective into one-PR-sized steps, identifies parallelism, assigns model tiers (strongest for architecture, default for implementation), marks risky steps for worktree isolation.
 3. **Draft** — Generates the plan from a structured template. Includes branch workflow rules, CI policy, invariants, and rollback strategies — all inline, fully self-contained.
-4. **Review** — Delegates adversarial review to an Opus sub-agent. Issues are fixed and re-reviewed until the plan passes.
+4. **Review** — Delegates adversarial review to a strongest-model sub-agent. Issues are fixed and re-reviewed until the plan passes.
 5. **Register** — Saves the plan and updates project memory.
 
 ## Directory Structure

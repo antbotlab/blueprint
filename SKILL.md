@@ -4,7 +4,7 @@ description: >-
   Create a construction plan for a multi-step engineering task that
   requires multiple PRs or a phased approach. Produces a self-contained
   plan file with dependency graph, review gates, and step-by-step
-  execution instructions for AI agents.
+  execution instructions for coding agents.
   TRIGGER when: user requests a plan, blueprint, or roadmap for a
   complex task, or describes work that clearly needs multiple PRs.
   DO NOT TRIGGER when: task is completable in a single PR or fewer
@@ -19,7 +19,7 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
 
 Create a construction plan for a multi-step engineering task. `$ARGUMENTS` format: `<project> <objective>` — project name (for locating code and naming the file) and a one-line goal.
 
-**Core principle**: The plan's only reader is an AI agent with zero prior context. Every line must serve cold-start execution — not human reporting, not status theater.
+**Core principle**: The plan's only reader is an agent with zero prior context. Every line must serve cold-start execution — not human reporting, not status theater.
 
 Example: `/blueprint myapp "migrate database to PostgreSQL"`
 
@@ -27,7 +27,7 @@ Example: `/blueprint myapp "migrate database to PostgreSQL"`
 
 - **Required**: Claude Code
 - **Recommended**: [git](https://git-scm.com/), [GitHub CLI (`gh`)](https://cli.github.com/) authenticated — enables full branch/PR/CI workflow. Without them, Blueprint auto-switches to direct mode.
-- **Optional**: Opus model access (enhances review quality), memory system
+- **Optional**: Strongest-tier model access (e.g., Opus — enhances review quality), memory system
 
 ## Decision Flow
 
@@ -45,7 +45,7 @@ digraph blueprint {
   direct [label="Phase 2: Design\n(direct workflow)"]
   draft_full [label="Phase 3: Draft\n(plan-template.md)"]
   draft_light [label="Phase 3: Draft\n(plan-template-light.md)"]
-  review [label="Phase 4: Review\n(Opus → Sonnet fallback)"]
+  review [label="Phase 4: Review\n(strongest → default fallback)"]
   register [label="Phase 5: Register"]
 
   start -> trivial
@@ -65,7 +65,7 @@ digraph blueprint {
 }
 ```
 
-**Key branch points**: If the task needs fewer than 3 tool calls, skip planning entirely. If pre-flight detects no git repo or no `gh` auth, use direct workflow with the light template (no branches, PRs, or CI gates). If an active plan already covers the same objective, ask the user before creating a duplicate. If Opus is unavailable for review, fall back to Sonnet.
+**Key branch points**: If the task needs fewer than 3 tool calls, skip planning entirely. If pre-flight detects no git repo or no `gh` auth, use direct workflow with the light template (no branches, PRs, or CI gates). If an active plan already covers the same objective, ask the user before creating a duplicate. If the strongest model is unavailable for review, fall back to the default model.
 
 ## Phase 1 — Research
 
@@ -95,16 +95,17 @@ Make architectural and sequencing decisions.
    - Can it run in parallel with other steps? → draw dependency edges.
    - Does it modify shared files? → must be serial with other steps touching those files.
    - Is it risky (large moves, entry point rewrites, breaking changes)? → mark for worktree isolation.
-   - Model assignment:
-     - **Opus**: architectural decisions affecting 3+ modules, risk assessment for breaking changes, review and audit tasks, steps where a wrong decision is expensive to reverse.
-     - **Sonnet** (default): implementation, file moves, test writing, config changes, mechanical refactors, search-heavy tasks.
-     - **Haiku**: never assigned for plan steps (insufficient reasoning for autonomous execution).
+   - Model assignment — two tiers, mapped to your model provider:
+     - **strongest** (e.g., Opus): architectural decisions affecting 3+ modules, risk assessment for breaking changes, review and audit tasks, steps where a wrong decision is expensive to reverse.
+     - **default** (e.g., Sonnet): implementation, file moves, test writing, config changes, mechanical refactors, search-heavy tasks.
+     - Never assign fast/lightweight models (e.g., Haiku) to plan steps — insufficient reasoning for autonomous execution.
+     - The `**Agent**:` field in each step tells the executing agent which tier to use. When spawning sub-agents, select the model matching this tier (e.g., in Claude Code: `model: "opus"` for strongest, omit or use `model: "sonnet"` for default).
 3. Assign Size (S/M/L) per step based on scope, complexity, and risk. This is a judgment call — no formula.
 4. Identify invariants — properties that must hold after every single step (e.g., build passes, no SDK leak into core).
 5. Identify risks and decide rollback strategy per step.
 6. Make key design decisions and record rationale ("chose A because B fails under X, C adds unnecessary complexity").
 7. Determine workflow mode:
-   - **Git projects with CI**: full branch workflow (branch → Opus review → push → CI green → squash merge via gh CLI). This is the default.
+   - **Git projects with CI**: full branch workflow (branch → strongest-model review → push → CI green → squash merge via gh CLI). This is the default.
    - **Non-git or docs-only tasks**: direct workflow (edit files in place, no branch/PR). Agent judges which mode applies.
 
 ## Phase 3 — Draft
@@ -127,9 +128,9 @@ Include an **Operational References** section at the bottom of the generated pla
 
 ## Phase 4 — Review
 
-Delegate adversarial review of the complete plan to an **Opus sub-agent**. If the Opus sub-agent fails (API error, timeout, unavailable model), retry once. On second failure, fall back to Sonnet and add a warning to the Review Log: "Reviewed by Sonnet — reduced review depth." Never block plan creation on review infrastructure failure.
+Delegate adversarial review of the complete plan to a **strongest-model sub-agent** (e.g., Opus). If the sub-agent fails (API error, timeout, unavailable model), retry once. On second failure, fall back to the default model and add a warning to the Review Log: "Reviewed by default model — reduced review depth." Never block plan creation on review infrastructure failure.
 
-Read `references/review-checklist.md` and `references/anti-patterns.md`. Include both documents in full in the Opus sub-agent's prompt so it can execute each checklist item against the plan. The sub-agent does not have access to the skill's installation directory — all review criteria and anti-pattern definitions must be passed inline.
+Read `references/review-checklist.md` and `references/anti-patterns.md`. Include both documents in full in the strongest-model sub-agent's prompt so it can execute each checklist item against the plan. The sub-agent does not have access to the skill's installation directory — all review criteria and anti-pattern definitions must be passed inline.
 
 Fix all critical and important findings. Log everything in Review Log.
 
