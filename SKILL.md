@@ -94,7 +94,7 @@ Make architectural and sequencing decisions.
 2. For each step, decide:
    - Can it run in parallel with other steps? → draw dependency edges.
    - Does it modify shared files? → must be serial with other steps touching those files.
-   - Is it risky (large moves, entry point rewrites, breaking changes)? → mark for worktree isolation.
+   - Is it risky (large moves, entry point rewrites, breaking changes)? → prefer main-tree with explicit rollback strategy. Worktree isolation is unreliable for sub-agents in practice — only mark for worktree if the step is genuinely destructive or exploratory and main-tree rollback is insufficient.
    - Model assignment — two tiers, mapped to your model provider:
      - **strongest** (e.g., Opus): architectural decisions affecting 3+ modules, risk assessment for breaking changes, review and audit tasks, steps where a wrong decision is expensive to reverse.
      - **default** (e.g., Sonnet): implementation, file moves, test writing, config changes, mechanical refactors, search-heavy tasks.

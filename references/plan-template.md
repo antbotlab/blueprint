@@ -88,12 +88,13 @@ Not all plan content carries the same level of constraint. Executing agents must
 
 **Branch**: `{project}-step-{NN}-{short-desc}`
 **Size**: S / M / L
-**Isolation**: worktree / main-tree
+**Isolation**: main-tree (default) / worktree (opt-in — only for genuinely risky steps; sub-agent worktree isolation is unreliable in practice, so prefer main-tree unless the step is destructive or exploratory)
 **Agent**: default / strongest
 
 **Context** (cold-start brief):
 {Minimum background for an agent that has NOT read previous steps.
-Must be self-contained with Design Decisions + Invariants.}
+Must be self-contained with Design Decisions + Invariants.
+If this step restructures code written by a prior step (e.g., lifting a variable out of a scope, changing function signatures, reordering pipeline stages), explicitly describe the refactoring range: which file, which function/block, what moves where. Without this, the executing agent will hit scope or reference errors with no guidance on how to resolve them.}
 
 **Tasks**:
 <!-- Tasks may be tagged [exact], [guided], or [open] to signal freedom level. Default is agent's judgment. -->
@@ -102,13 +103,26 @@ Must be self-contained with Design Decisions + Invariants.}
 
 **Rollback**: {recovery strategy on failure — usually "discard worktree" or "revert commit"}
 
-**Verification**:
+**Verification** (minimum coverage — executing agents should add boundary, round-trip, and edge-case tests beyond this list):
 - [ ] Automated: `{exact commands}`
 - [ ] Manual: `{action + expected result}` (only at E2E milestones)
 
 **Exit criteria**: {specific, measurable, unambiguous}
 
 ---
+
+## State Snapshot (optional)
+
+{For plans where the system under construction evolves structurally across steps (e.g., a processing pipeline gains new stages, a module gains new exports, a config file accumulates entries), include an expected state snapshot after each step or after key milestones. This serves as a verification anchor — executing agents compare actual state against the snapshot to catch drift.
+
+Example format for a pipeline-based system:
+```
+After Step 03: pipeline stages = [parse, validate, transform, emit]
+After Step 05: pipeline stages = [parse, validate, normalize, transform, enrich, emit]
+After Step 07: pipeline stages = [parse, validate, normalize, transform, enrich, schedule, emit]
+```
+
+Omit this section if the system structure is static across steps.}
 
 ## Dependency Graph
 

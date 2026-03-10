@@ -53,7 +53,8 @@ Not all plan content carries the same level of constraint. Executing agents must
 
 **Context** (cold-start brief):
 {Minimum background for an agent that has NOT read previous steps.
-Must be self-contained with Design Decisions + Invariants.}
+Must be self-contained with Design Decisions + Invariants.
+If this step restructures code written by a prior step (e.g., lifting a variable out of a scope, changing function signatures, reordering pipeline stages), explicitly describe the refactoring range: which file, which function/block, what moves where. Without this, the executing agent will hit scope or reference errors with no guidance on how to resolve them.}
 
 **Tasks**:
 <!-- Tasks may be tagged [exact], [guided], or [open] to signal freedom level. Default is agent's judgment. -->
@@ -62,13 +63,19 @@ Must be self-contained with Design Decisions + Invariants.}
 
 **Rollback**: {recovery strategy on failure}
 
-**Verification**:
+**Verification** (minimum coverage — executing agents should add boundary, round-trip, and edge-case tests beyond this list):
 - [ ] Automated: `{exact commands}`
 - [ ] Manual: `{action + expected result}` (only at E2E milestones)
 
 **Exit criteria**: {specific, measurable, unambiguous}
 
 ---
+
+## State Snapshot (optional)
+
+{For plans where the system under construction evolves structurally across steps (e.g., a processing pipeline gains new stages, a module gains new exports, a config file accumulates entries), include an expected state snapshot after each step or after key milestones. This serves as a verification anchor — executing agents compare actual state against the snapshot to catch drift.
+
+Omit this section if the system structure is static across steps.}
 
 ## Dependency Graph
 
