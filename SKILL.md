@@ -40,12 +40,15 @@ Output a brief context summary (5-10 lines) before proceeding. Do not ask for co
 
 Make architectural and sequencing decisions.
 
-1. Break the objective into steps. Each step = one PR's worth of change.
+1. Break the objective into steps. Each step = one PR's worth of change. A step is one-PR sized when: (a) a reviewer can understand the full diff in a single review session, (b) it changes ≤15 files, (c) it has a single logical intent describable in one sentence. If a step violates any of these, split it.
 2. For each step, decide:
    - Can it run in parallel with other steps? → draw dependency edges.
    - Does it modify shared files? → must be serial with other steps touching those files.
    - Is it risky (large moves, entry point rewrites, breaking changes)? → mark for worktree isolation.
-   - Does it need deep reasoning? → assign Opus. Otherwise default Sonnet.
+   - Model assignment:
+     - **Opus**: architectural decisions affecting 3+ modules, risk assessment for breaking changes, review and audit tasks, steps where a wrong decision is expensive to reverse.
+     - **Sonnet** (default): implementation, file moves, test writing, config changes, mechanical refactors, search-heavy tasks.
+     - **Haiku**: never assigned for plan steps (insufficient reasoning for autonomous execution).
 3. Assign Size (S/M/L) per step based on scope, complexity, and risk. This is a judgment call — no formula.
 4. Identify invariants — properties that must hold after every single step (e.g., build passes, no SDK leak into core).
 5. Identify risks and decide rollback strategy per step.
@@ -56,7 +59,7 @@ Make architectural and sequencing decisions.
 
 ## Phase 3 — Draft
 
-Write the plan file at `plans/{project}-{objective-slug}.md` following the template below.
+Write the plan file at `plans/{project}-{objective-slug}.md` following the template below. Generate the slug from the objective: lowercase, replace spaces with hyphens, strip non-alphanumeric characters except hyphens, truncate to 40 characters. Example: "Extract providers into plugins" → `extract-providers-into-plugins`. Full filename example: `plans/myapp-extract-providers-into-plugins.md`.
 
 The plan must be **fully self-contained** — an executing agent reads only the plan file and the project's CLAUDE.md. All branch workflow rules, CI policy, and review gates must be written directly into the plan. Do not reference external documents for critical workflow rules.
 
@@ -93,3 +96,4 @@ Fix all critical and important findings. Log everything in Review Log.
 - One plan per file. Never append a new plan to an existing plan file.
 - If an active plan already exists for the same project+objective, ask the user whether to supersede or create a parallel plan.
 - Code snippets in plans are allowed for key configurations (package.json, tsconfig, etc.) but not for implementation code. Implementation is the executing agent's job.
+- When the plan template changes in a backward-incompatible way, increment the format version (`plan-format` field in template header). Executing agents should note version mismatches but not refuse to execute old-format plans.

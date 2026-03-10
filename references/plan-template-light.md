@@ -2,6 +2,8 @@
 
 # {Title} — Construction Plan
 
+plan-format: 1
+
 ## Objective
 {1-2 sentences: what + why}
 
@@ -30,6 +32,14 @@ Operations are classified by reversibility. Executing agents must respect these 
 **User-confirmed** (ask before executing):
 - deleting files or directories, overwriting critical config, any operation that is hard to reverse
 
+## Prescription Calibration
+
+Not all plan content carries the same level of constraint. Executing agents must respect these tiers:
+
+- **Zero freedom** (exact commands, no deviation): exact file paths, build commands, security-sensitive operations. Copy and execute literally.
+- **Low freedom** (approach specified, implementation flexible): step decomposition, test structure, module boundaries, structural/interface code snippets. Follow the intent; adapt details to fit the actual code.
+- **High freedom** (goal only): implementation code, commit messages, prose. Executing agent decides.
+
 ## Steps
 
 ### Step {NN}: {title} [ ]
@@ -42,6 +52,7 @@ Operations are classified by reversibility. Executing agents must respect these 
 Must be self-contained with Design Decisions + Invariants.}
 
 **Tasks**:
+<!-- Tasks may be tagged [exact], [guided], or [open] to signal freedom level. Default is agent's judgment. -->
 1. ...
 2. ...
 
