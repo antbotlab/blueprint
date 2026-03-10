@@ -3,7 +3,7 @@
 Phase 4 review checklist for Opus sub-agent. Execute each item against the plan.
 
 1. **Completeness** — does the plan cover the full objective? Are there gaps between the last step and the goal?
-2. **Step granularity** — is each step one-PR sized? Any step that's too large to review in one sitting?
+2. **Step granularity** — is each step one-PR sized? A step is one-PR sized when: (a) a reviewer can understand the full diff in a single review session, (b) it changes ≤15 files, (c) it has a single logical intent describable in one sentence. Flag any step that violates any of these criteria.
 3. **Dependency correctness** — are parallel steps truly independent? Would they conflict on shared files?
 4. **Cold-start viability** — can an agent execute Step N by reading only: Step N's section + Design Decisions + Invariants + Branch Workflow? Or does it implicitly depend on knowledge from earlier steps?
 5. **Rollback coverage** — does every step have a rollback strategy? Is "discard worktree" actually sufficient or would data be lost?
