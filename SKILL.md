@@ -12,11 +12,23 @@ Create a construction plan for a multi-step engineering task. `$ARGUMENTS` forma
 
 **Core principle**: The plan's only reader is an AI agent with zero prior context. Every line must serve cold-start execution — not human reporting, not status theater.
 
+## Prerequisites
+
+- **Required**: git, GitHub CLI (`gh`) authenticated
+- **Optional**: Opus model access (enhances review quality), memory system
+
 ## Phase 1 — Research
 
 Gather the minimum context needed to make sound design decisions.
 
-1. Read `memory/MEMORY.md` to find the project's path and current status.
+0. **Pre-flight checks** — run all checks before any planning work. If any check fails, degrade gracefully or stop and ask; never guess.
+   - `git rev-parse --is-inside-work-tree`: if false (not a git repo), set workflow mode to "direct" and skip all remaining git pre-flight checks. The skill still works for non-git tasks.
+   - `gh auth status`: if the command fails, warn the user and set workflow mode to "direct" (no PR/CI gates). If multiple accounts are authenticated, report all accounts and ask the user to confirm which one to use before any remote operation.
+   - `git config user.name` and `git config user.email`: if either is unset, **stop and ask the user**. Never auto-configure git identity — wrong attribution in commit history is permanent.
+   - `git remote -v`: if empty (no remote configured), warn the user and set workflow mode to "direct" — PR/CI operations are impossible without a remote. If a remote exists, record the URL protocol (SSH vs HTTPS) for reference — do not assume or switch protocol.
+   - **Default branch detection**: run `git remote set-head origin --auto 2>/dev/null; git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@'`. Store the result as `{default-branch}`. If this fails (no remote, detached HEAD, etc.), fall back to `main`. Use `{default-branch}` throughout the plan template — never hardcode `main`.
+
+1. If `memory/MEMORY.md` exists, read it to find the project's path and current status. If absent, rely on codebase scanning (steps 2-4 below).
 2. Read the project's CLAUDE.md, README, and package.json (or equivalent entry point).
 3. Read existing plans in `plans/` for the same project — avoid duplicating or contradicting active plans.
 4. Scan source code: directory structure, key modules, dependency graph, test setup.
@@ -76,7 +88,7 @@ Executing agents must not re-litigate these unless they find factual errors.}
 
 ### Branch naming
 - Format: `{project}-step-{NN}-{short-desc}` (kebab-case, e.g., `antbot-step-03-plugin-loader`)
-- Always branch from latest `main`: `git pull origin main && git checkout -b <branch>`
+- Always branch from latest default branch (detected in Phase 1 pre-flight): `git pull origin {default-branch} && git checkout -b <branch>`
 - One branch per step. Never bundle multiple steps into one branch.
 
 ### Pre-push Opus review gate
@@ -84,7 +96,7 @@ Every branch must pass an Opus sub-agent review before pushing to remote. No exc
 1. Executing agent completes all tasks and runs verification locally.
 2. Executing agent commits all changes on the feature branch.
 3. **Before `git push`**: delegate review to an Opus sub-agent:
-   - Prompt: "Review all commits on branch `{branch}` against `main`. Check: correctness, edge cases, consistency with existing code, CLAUDE.md compliance, security. Return a structured list of findings (critical / important / minor)."
+   - Prompt: "Review all commits on branch `{branch}` against `{default-branch}`. Check: correctness, edge cases, consistency with existing code, CLAUDE.md compliance, security. Return a structured list of findings (critical / important / minor)."
    - If critical or important findings: fix, commit, re-review. Iterate until clean.
    - Minor findings: fix if trivial, otherwise log in Progress Log.
 4. Only after review passes: `git push -u origin <branch>`.
@@ -95,7 +107,7 @@ After push, CI must pass before merge.
 2. Wait for CI: `gh run watch <run-id>`. Never proceed while CI is pending.
 3. If CI fails: diagnose locally → fix → commit → re-review (Opus gate) → push → wait for CI again. Never merge a red branch.
 4. After CI is green: use `/pr` skill to create PR and merge (squash merge via GitHub).
-5. After merge: `git checkout main && git pull origin main`. Verify merge commit.
+5. After merge: `git checkout {default-branch} && git pull origin {default-branch}`. Verify merge commit.
 
 ### Zero-tolerance CI policy
 - A CI failure that reaches `main` is a **P0 construction incident** — permanent, public, damages project credibility.
@@ -150,7 +162,7 @@ Must be self-contained with Design Decisions + Invariants.}
 
 ## Phase 4 — Review
 
-Delegate adversarial review of the complete plan to an **Opus sub-agent**.
+Delegate adversarial review of the complete plan to an **Opus sub-agent**. If the Opus sub-agent fails (API error, timeout, unavailable model), retry once. On second failure, fall back to Sonnet and add a warning to the Review Log: "Reviewed by Sonnet — reduced review depth." Never block plan creation on review infrastructure failure.
 
 Review checklist for the sub-agent:
 1. **Completeness** — does the plan cover the full objective? Are there gaps between the last step and the goal?
@@ -169,8 +181,7 @@ Fix all critical and important findings. Log everything in Review Log.
 ## Phase 5 — Register
 
 1. Save the plan file (written in Phase 3, refined in Phase 4 via Edit tool).
-2. Update `memory/MEMORY.md`:
-   - Add plan entry under the relevant project with `created: {date}` and brief description.
+2. If `memory/MEMORY.md` exists, update it: add a plan entry under the relevant project with `created: {date}` and brief description. If absent, skip memory registration.
 3. Present to user:
    - Plan file path
    - Step count and estimated parallelism
