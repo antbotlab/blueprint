@@ -1,6 +1,15 @@
 ---
 name: blueprint
-description: Create a construction plan for a multi-step engineering task. Researches codebase, drafts plan with dependency graph, delegates Opus review, saves to plans/.
+description: >-
+  Create a construction plan for a multi-step engineering task that
+  requires multiple PRs or a phased approach. Produces a self-contained
+  plan file with dependency graph, review gates, and step-by-step
+  execution instructions for AI agents.
+  TRIGGER when: user requests a plan, blueprint, or roadmap for a
+  complex task, or describes work that clearly needs multiple PRs.
+  DO NOT TRIGGER when: task is completable in a single PR or fewer
+  than 3 tool calls, user asks to modify/update an existing plan,
+  user says "just do it", or user asks for code review/audit.
 disable-model-invocation: false
 argument-hint: <project> <objective>
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
@@ -11,6 +20,8 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
 Create a construction plan for a multi-step engineering task. `$ARGUMENTS` format: `<project> <objective>` — project name (for locating code and naming the file) and a one-line goal.
 
 **Core principle**: The plan's only reader is an AI agent with zero prior context. Every line must serve cold-start execution — not human reporting, not status theater.
+
+Example: `/blueprint myapp "migrate database to PostgreSQL"`
 
 ## Prerequisites
 
