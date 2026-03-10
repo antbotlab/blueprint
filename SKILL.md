@@ -28,6 +28,44 @@ Example: `/blueprint myapp "migrate database to PostgreSQL"`
 - **Required**: git, GitHub CLI (`gh`) authenticated
 - **Optional**: Opus model access (enhances review quality), memory system
 
+## Decision Flow
+
+```dot
+digraph blueprint {
+  rankdir=TB
+  start [label="Objective received"]
+  trivial [label="< 3 tool calls?" shape=diamond]
+  just_do_it [label="Just do it\n(skip planning)"]
+  research [label="Phase 1: Research\n+ Pre-flight checks"]
+  conflict [label="Active plan\nexists?" shape=diamond]
+  ask_user [label="Ask user:\nsupersede or parallel?"]
+  git_check [label="Git repo +\ngh auth?" shape=diamond]
+  full [label="Phase 2: Design\n(branch workflow)"]
+  direct [label="Phase 2: Design\n(direct workflow)"]
+  draft_full [label="Phase 3: Draft\n(plan-template.md)"]
+  draft_light [label="Phase 3: Draft\n(plan-template-light.md)"]
+  review [label="Phase 4: Review\n(Opus → Sonnet fallback)"]
+  register [label="Phase 5: Register"]
+
+  start -> trivial
+  trivial -> just_do_it [label="yes"]
+  trivial -> research [label="no"]
+  research -> conflict
+  conflict -> ask_user [label="yes"]
+  conflict -> git_check [label="no"]
+  ask_user -> git_check
+  git_check -> full [label="yes"]
+  git_check -> direct [label="no"]
+  full -> draft_full
+  direct -> draft_light
+  draft_full -> review
+  draft_light -> review
+  review -> register
+}
+```
+
+**Key branch points**: If the task needs fewer than 3 tool calls, skip planning entirely. If pre-flight detects no git repo or no `gh` auth, use direct workflow with the light template (no branches, PRs, or CI gates). If an active plan already covers the same objective, ask the user before creating a duplicate. If Opus is unavailable for review, fall back to Sonnet.
+
 ## Phase 1 — Research
 
 Gather the minimum context needed to make sound design decisions.
