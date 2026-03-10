@@ -116,19 +116,53 @@ This scans your codebase, designs a step-by-step plan, reviews it with a stronge
 
 **Graceful degradation** — Strongest model unavailable? Falls back to default. No GitHub CLI? Switches to direct mode. No project memory? Relies on codebase scanning. Blueprint adapts instead of failing.
 
-## How Blueprint Differs from `/plan`
+## Comparison
 
-Claude Code's built-in `/plan` generates a persisted Markdown plan and works well for straightforward tasks. Blueprint is designed for multi-session, multi-agent projects where each step must be independently executable:
+Claude Code's built-in `/plan` works well for straightforward tasks. Persistent-planning tools (like [planning-with-files](https://github.com/OthmanAdi/planning-with-files)) solve context loss across sessions by writing state to disk. Blueprint is designed for a different problem: multi-session, multi-agent projects where each step must be independently executable by a fresh agent that has never seen the conversation history.
 
-| | `/plan` | `/blueprint` |
-|---|---|---|
-| Zero setup | Yes — built in | Requires install |
-| Persisted plan file | Yes — `~/.claude/plans/` | Yes — project `plans/` directory |
-| Cold-start steps | No — steps assume shared context | Yes — each step has a self-contained context brief |
-| Adversarial review | No | Yes — strongest-model review gate |
-| Branch/PR/CI workflow | No | Yes — built into every step |
-| Dependency graph | No | Yes — parallel groups and serial constraints |
-| Plan mutation protocol | No | Yes — split, insert, skip, reorder, abandon |
+| | `/plan` | Persistent planners | `/blueprint` |
+|---|---|---|---|
+| Zero setup | Yes — built in | Install required | Install required |
+| Persisted plan file | Yes — `~/.claude/plans/` | Yes — markdown files | Yes — project `plans/` directory |
+| Cold-start steps | No — shared context | Partial — session-catchup scripts | Yes — each step has a self-contained context brief |
+| Adversarial review | No | No | Yes — strongest-model review gate |
+| Branch/PR/CI workflow | No | No | Yes — built into every step |
+| Dependency graph | No | No | Yes — parallel groups and serial constraints |
+| Plan mutation protocol | No | No | Yes — split, insert, skip, reorder, abandon |
+| Model tier assignment | No | No | Yes — strongest vs default per step |
+| Anti-pattern detection | No | No | Yes — catalog scanned before finalization |
+| Autonomy boundaries | No | No | Yes — guided vs exact task markers |
+| Zero runtime risk | N/A | Hooks execute on every tool call | Yes — pure markdown, no hooks, no scripts |
+
+### When to use what
+
+- **`/plan`** — single-session tasks, quick prototyping, exploratory work.
+- **Persistent planners** — repeated context loss is the bottleneck and you want automatic session recovery.
+- **`/blueprint`** — the project is too large for one session, involves multiple agents or team members, and each step must be executable without reading the rest of the plan.
+
+## Cross-Platform Compatibility
+
+Blueprint generates standard [Agent Skills](https://agentskills.io/) format (`SKILL.md`). The generated plans are plain Markdown — any agent that can read files can execute them:
+
+- **Claude Code** — native `/blueprint` slash command
+- **Cursor, GitHub Copilot, VS Code** — point to `SKILL.md` as instruction file
+- **OpenAI Codex CLI** — load as system prompt
+- **Gemini CLI** — include in context
+- **OpenClaw** — add to workspace skills directory
+- **Any SKILL.md-compatible agent** — [30+ tools support the format](https://agentskills.io/)
+
+## Security
+
+Blueprint is a **pure-instruction skill** — it contains no executable code, no hooks, no shell scripts, and no runtime dependencies. The entire skill is markdown files that tell the agent what to do.
+
+This matters because [13.4% of public agent skills contain serious vulnerabilities](https://snyk.io/blog/toxicskills/) (Snyk, February 2026). Blueprint avoids this attack surface entirely:
+
+- No `PreToolUse` / `PostToolUse` hooks that execute on every tool call
+- No shell scripts that could be modified or injected
+- No network calls, no file system writes outside the plan file
+- No dependencies to supply-chain-attack
+
+What you install is what you read — markdown instructions, reference templates, and examples.
 
 ## How It Works
 
