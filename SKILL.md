@@ -82,6 +82,8 @@ If pre-flight checks set workflow mode to "direct" (non-git or no gh auth), read
 
 **Note on non-git / docs-only plans**: Use `references/plan-template-light.md`. Steps use direct file edits without branch/PR/CI gates.
 
+Before finalizing, scan `references/anti-patterns.md` and verify the plan does not contain any listed anti-pattern.
+
 ## Phase 4 — Review
 
 Delegate adversarial review of the complete plan to an **Opus sub-agent**. If the Opus sub-agent fails (API error, timeout, unavailable model), retry once. On second failure, fall back to Sonnet and add a warning to the Review Log: "Reviewed by Sonnet — reduced review depth." Never block plan creation on review infrastructure failure.
