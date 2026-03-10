@@ -42,10 +42,10 @@ Extract the hardcoded scheduler module from `taskflow` core into a standalone pl
 - One branch per step. Never bundle multiple steps into one branch.
 
 ### Pre-push Opus review gate
-Every branch must pass an Opus sub-agent review before pushing to remote. No exceptions.
+Every branch must pass an Opus-level review before pushing to remote. No exceptions.
 1. Executing agent completes all tasks and runs verification locally.
 2. Executing agent commits all changes on the feature branch.
-3. **Before `git push`**: delegate review to an Opus sub-agent:
+3. **Before `git push`**: delegate review to an Opus sub-agent. If the executing agent is already Opus, self-review is acceptable — the gate's purpose is to ensure Opus-level scrutiny, not to require a separate agent. The agent must still perform a structured review against the same criteria.
    - Prompt: "Review all commits on branch `{branch}` against `main`. Check: correctness, edge cases, consistency with existing code, CLAUDE.md compliance, security. Return a structured list of findings (critical / important / minor)."
    - If critical or important findings: fix, commit, re-review. Iterate until clean.
    - Minor findings: fix if trivial, otherwise log in Progress Log.
@@ -56,7 +56,7 @@ After push, CI must pass before merge.
 1. After push: `gh run list -b <branch> --limit 1` to find the CI run.
 2. Wait for CI: `gh run watch <run-id>`. Never proceed while CI is pending.
 3. If CI fails: diagnose locally → fix → commit → re-review (Opus gate) → push → wait for CI again. Never merge a red branch.
-4. After CI is green: `gh pr create --title '{step title}' --body '{summary}' && gh pr merge --squash --delete-branch`. If pre-flight found no `gh` auth, this step is omitted entirely (plan uses direct workflow).
+4. After CI is green: `gh pr create --title '{step title}' --body '{summary}'`. Then merge: `gh pr merge --squash --delete-branch`. If `gh pr merge` fails due to branch protection rules (required reviewers, pending PR-specific status checks, merge queue), report the blocker to the user and wait for resolution before proceeding. If pre-flight found no `gh` auth, this step is omitted entirely (plan uses direct workflow).
 5. After merge: `git checkout main && git pull origin main`. Verify merge commit.
 
 ### Zero-tolerance CI policy
@@ -179,7 +179,7 @@ The `taskflow` monorepo uses pnpm workspaces with packages under `packages/`. Tw
 4. [exact] Add `"packages/plugin-scheduler"` to root `pnpm-workspace.yaml` if not auto-discovered.
 5. [exact] Run: `pnpm install && pnpm -r build`
 
-**Rollback**: `rm -rf packages/plugin-scheduler` and revert `pnpm-workspace.yaml` changes.
+**Rollback**: `trash packages/plugin-scheduler` (or `rm -rf` if `trash` is unavailable) and revert `pnpm-workspace.yaml` changes.
 
 **Verification**:
 - [ ] Automated: `pnpm -r build` — all packages build including the new one
@@ -245,7 +245,7 @@ The `taskflow` core's scheduler implementation lives at `packages/core/src/sched
    - Export a `register()` function that calls `registerPlugin('scheduler', factory())`
    - Export the factory function for users who want manual control
 4. [guided] Update all import paths in moved files (internal cross-references between `scheduler.ts`, `queue.ts`, `cron-parser.ts`).
-5. [exact] Delete the now-empty `packages/core/src/scheduler/` directory: `rm -rf packages/core/src/scheduler/`
+5. [exact] Verify `packages/core/src/scheduler/` is empty, then remove: `rmdir packages/core/src/scheduler/`
 6. [exact] Run: `pnpm install && pnpm -r build && pnpm -r typecheck`
 
 **Rollback**: Discard worktree — `git worktree remove taskflow-step-05a-move-files`. Main tree is unaffected.
@@ -472,8 +472,8 @@ This table is the single source of truth for execution state.
 
 When execution diverges from the plan structure, mutate the plan and record the change:
 
-- **Split**: rename Step N → Step Na, create Step Nb. Update dependency graph. Log reason in Progress Log.
-- **Insert**: use letter suffix (e.g., Step 05a) to avoid renumbering. New step must pass cold-start test (self-contained Context).
+- **Split**: rename Step N → Step Na, create Step Nb. If a letter-suffixed step needs further splitting, append a numeral (05a → 05a1, 05a2). Update dependency graph. Log reason in Progress Log.
+- **Insert**: use letter suffix (e.g., Step 05a) to avoid renumbering. If the target suffix already exists (from a prior split), use the next available letter. New step must pass cold-start test (self-contained Context).
 - **Skip**: mark `[SKIP]` with reason. Never delete — skipped steps are historical record that prevents re-attempting failed approaches.
 - **Reorder**: only if dependency graph allows. Verify no step reads output from a step that now executes after it.
 - **Abandon**: mark `## Status: ABANDONED — {reason}`. Log lessons in Review Log. Do not delete the file.

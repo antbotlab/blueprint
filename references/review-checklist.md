@@ -9,7 +9,7 @@ Phase 4 review checklist for Opus sub-agent. Execute each item against the plan.
 5. **Rollback coverage** — does every step have a rollback strategy? Is "discard worktree" actually sufficient or would data be lost?
 6. **Invariant sufficiency** — do the invariants catch real regressions? Are any missing?
 7. **Exit criteria testability** — can each exit criterion be verified by running a command? Vague criteria like "code is clean" are rejected.
-8. **Branch workflow compliance** — does every step follow the branch naming, Opus review gate, CI gate, and gh CLI merge procedure?
+8. **Branch workflow compliance** (branch-workflow plans only; skip for direct-workflow plans) — does every step follow the branch naming, Opus review gate, CI gate, and gh CLI merge procedure?
 9. **Risk assessment** — are the riskiest steps identified? Do they have worktree isolation and manual verification?
 10. **CLAUDE.md compliance** — does anything in the plan contradict project or workspace rules?
 11. **Anti-pattern scan** — does the plan contain any pattern from `references/anti-patterns.md`?

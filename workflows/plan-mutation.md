@@ -10,6 +10,7 @@ Use when a step is too large to complete atomically or a sub-problem turns out t
 
 - Rename the original step: **Step N → Step Na**
 - Create the new sub-step: **Step Nb** (continuing the letter series: Nb, Nc, …)
+- If a letter-suffixed step itself needs further splitting, append a numeral: **Step 05a → Step 05a1 + Step 05a2**. This avoids collision with the insert namespace.
 - Branch names follow the step label: `project-step-05a-desc`, `project-step-05b-desc`
 - Update the Dependency Graph to reflect the new nodes and edges
 - Log the split in the Progress Log with the reason (e.g., "split: auth and token storage are independent, can parallelize")
@@ -19,6 +20,7 @@ Use when a step is too large to complete atomically or a sub-problem turns out t
 Use when a necessary step was missed during planning.
 
 - Assign a letter suffix to avoid renumbering all downstream steps: **Step 05a** inserts between Steps 05 and 06
+- If the target letter suffix already exists (e.g., 05a was created by a prior split), use the next available letter (05c, 05d, etc.). Check both the Steps section and the Progress Log before assigning a suffix.
 - Branch name follows: `project-step-05a-desc`
 - The new step **must pass the cold-start test**: its Context field must be readable by an agent that has not seen any prior steps. Do not rely on implicit knowledge from surrounding steps.
 - Update the Dependency Graph to wire the new step into the execution order

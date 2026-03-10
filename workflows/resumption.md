@@ -12,7 +12,7 @@ When resuming a partially-executed plan in a new session, follow these steps in 
    - Any skipped steps (status `[SKIP]`) — do not re-attempt these
 
 3. **Assess in-progress steps.** If a step is marked `[>]`:
-   - Check whether its branch exists: `git branch -a | grep {branch-name}`
+   - Check whether its branch exists: `git branch --list '{branch-name}'` (local) or `git ls-remote --heads origin '{branch-name}'` (remote). Use exact name match, not substring grep.
    - If the branch **exists with commits**: read those commits and assess how much work is done. Determine whether the step is near-complete or needs significant remaining work.
    - If the branch **does not exist** (or has no commits): treat the step as `[ ]` (not started) and begin from scratch.
 

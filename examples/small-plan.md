@@ -164,8 +164,8 @@ This table is the single source of truth for execution state.
 
 When execution diverges from the plan structure, mutate the plan and record the change:
 
-- **Split**: rename Step N → Step Na, create Step Nb. Update dependency graph. Log reason in Progress Log.
-- **Insert**: use letter suffix (e.g., Step 05a) to avoid renumbering. New step must pass cold-start test (self-contained Context).
+- **Split**: rename Step N → Step Na, create Step Nb. If a letter-suffixed step needs further splitting, append a numeral (05a → 05a1, 05a2). Update dependency graph. Log reason in Progress Log.
+- **Insert**: use letter suffix (e.g., Step 05a) to avoid renumbering. If the target suffix already exists (from a prior split), use the next available letter. New step must pass cold-start test (self-contained Context).
 - **Skip**: mark `[SKIP]` with reason. Never delete — skipped steps are historical record that prevents re-attempting failed approaches.
 - **Reorder**: only if dependency graph allows. Verify no step reads output from a step that now executes after it.
 - **Abandon**: mark `## Status: ABANDONED — {reason}`. Log lessons in Review Log. Do not delete the file.
@@ -177,6 +177,6 @@ To resume a partially-executed plan in a new session:
 
 1. Read the plan file (objective, constraints, invariants, dependency graph).
 2. Read Progress Log — find last `[x]` step and any `[>]` step.
-3. If a step is `[>]`: check branch state. If no branch exists, treat as `[ ]`. (Direct-workflow plans: check file state against exit criteria instead.)
+3. If a step is `[>]`: check file state against exit criteria to assess completion. If criteria are not met, continue from where the previous session left off.
 4. Read Review Log for context on past issues and decisions.
 5. Resume from the first `[ ]` or `[>]` step. Do not re-execute `[x]` or `[SKIP]` steps.

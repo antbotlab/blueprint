@@ -31,10 +31,10 @@ Executing agents must not re-litigate these unless they find factual errors.}
 - One branch per step. Never bundle multiple steps into one branch.
 
 ### Pre-push Opus review gate
-Every branch must pass an Opus sub-agent review before pushing to remote. No exceptions.
+Every branch must pass an Opus-level review before pushing to remote. No exceptions.
 1. Executing agent completes all tasks and runs verification locally.
 2. Executing agent commits all changes on the feature branch.
-3. **Before `git push`**: delegate review to an Opus sub-agent:
+3. **Before `git push`**: delegate review to an Opus sub-agent. If the executing agent is already Opus, self-review is acceptable — the gate's purpose is to ensure Opus-level scrutiny, not to require a separate agent. The agent must still perform a structured review against the same criteria.
    - Prompt: "Review all commits on branch `{branch}` against `{default-branch}`. Check: correctness, edge cases, consistency with existing code, CLAUDE.md compliance, security. Return a structured list of findings (critical / important / minor)."
    - If critical or important findings: fix, commit, re-review. Iterate until clean.
    - Minor findings: fix if trivial, otherwise log in Progress Log.
@@ -45,7 +45,7 @@ After push, CI must pass before merge.
 1. After push: `gh run list -b <branch> --limit 1` to find the CI run.
 2. Wait for CI: `gh run watch <run-id>`. Never proceed while CI is pending.
 3. If CI fails: diagnose locally → fix → commit → re-review (Opus gate) → push → wait for CI again. Never merge a red branch.
-4. After CI is green: `gh pr create --title '{step title}' --body '{summary}' && gh pr merge --squash --delete-branch`. If pre-flight found no `gh` auth, this step is omitted entirely (plan uses direct workflow).
+4. After CI is green: `gh pr create --title '{step title}' --body '{summary}'`. Then merge: `gh pr merge --squash --delete-branch`. If `gh pr merge` fails due to branch protection rules (required reviewers, pending PR-specific status checks, merge queue), report the blocker to the user and wait for resolution before proceeding. If pre-flight found no `gh` auth, this step is omitted entirely (plan uses direct workflow).
 5. After merge: `git checkout {default-branch} && git pull origin {default-branch}`. Verify merge commit.
 
 ### Zero-tolerance CI policy
@@ -132,8 +132,8 @@ This table is the single source of truth for execution state.
 
 When execution diverges from the plan structure, mutate the plan and record the change:
 
-- **Split**: rename Step N → Step Na, create Step Nb. Update dependency graph. Log reason in Progress Log.
-- **Insert**: use letter suffix (e.g., Step 05a) to avoid renumbering. New step must pass cold-start test (self-contained Context).
+- **Split**: rename Step N → Step Na, create Step Nb. If a letter-suffixed step needs further splitting, append a numeral (05a → 05a1, 05a2). Update dependency graph. Log reason in Progress Log.
+- **Insert**: use letter suffix (e.g., Step 05a) to avoid renumbering. If the target suffix already exists (from a prior split), use the next available letter. New step must pass cold-start test (self-contained Context).
 - **Skip**: mark `[SKIP]` with reason. Never delete — skipped steps are historical record that prevents re-attempting failed approaches.
 - **Reorder**: only if dependency graph allows. Verify no step reads output from a step that now executes after it.
 - **Abandon**: mark `## Status: ABANDONED — {reason}`. Log lessons in Review Log. Do not delete the file.

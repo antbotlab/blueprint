@@ -25,7 +25,8 @@ Example: `/blueprint myapp "migrate database to PostgreSQL"`
 
 ## Prerequisites
 
-- **Required**: git, GitHub CLI (`gh`) authenticated
+- **Required**: Claude Code
+- **Recommended**: [git](https://git-scm.com/), [GitHub CLI (`gh`)](https://cli.github.com/) authenticated — enables full branch/PR/CI workflow. Without them, Blueprint auto-switches to direct mode.
 - **Optional**: Opus model access (enhances review quality), memory system
 
 ## Decision Flow
@@ -75,7 +76,7 @@ Gather the minimum context needed to make sound design decisions.
    - `gh auth status`: if the command fails, warn the user and set workflow mode to "direct" (no PR/CI gates). If multiple accounts are authenticated, report all accounts and ask the user to confirm which one to use before any remote operation.
    - `git config user.name` and `git config user.email`: if either is unset, **stop and ask the user**. Never auto-configure git identity — wrong attribution in commit history is permanent.
    - `git remote -v`: if empty (no remote configured), warn the user and set workflow mode to "direct" — PR/CI operations are impossible without a remote. If a remote exists, record the URL protocol (SSH vs HTTPS) for reference — do not assume or switch protocol.
-   - **Default branch detection**: run `git remote set-head origin --auto 2>/dev/null; git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@'`. Store the result as `{default-branch}`. If this fails (no remote, detached HEAD, etc.), fall back to `main`. Use `{default-branch}` throughout the plan template — never hardcode `main`.
+   - **Default branch detection**: run `git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@'`. If this fails (ref not set), try `git remote show origin 2>/dev/null | awk '/HEAD branch:/ {print $NF}'`. Store the result as `{default-branch}`. If both fail, fall back to `main` and log the fallback in the plan's Design Decisions section. Avoid `git remote set-head --auto` — it modifies local refs and requires network access, which is inappropriate for a pre-flight check. Use `{default-branch}` throughout the plan template — never hardcode `main`.
 
 1. If `memory/MEMORY.md` exists, read it to find the project's path and current status. If absent, rely on codebase scanning (steps 2-4 below).
 2. Read the project's CLAUDE.md, README, and package.json (or equivalent entry point).
@@ -89,7 +90,7 @@ Output a brief context summary (5-10 lines) before proceeding. Do not ask for co
 
 Make architectural and sequencing decisions.
 
-1. Break the objective into steps. Each step = one PR's worth of change. A step is one-PR sized when: (a) a reviewer can understand the full diff in a single review session, (b) it changes ≤15 files, (c) it has a single logical intent describable in one sentence. If a step violates any of these, split it.
+1. Break the objective into steps. Each step = one PR's worth of change. A step is one-PR sized when: (a) a reviewer can understand the full diff in a single review session, (b) it changes ≤15 files, (c) it has a single logical intent describable in one sentence. If a step violates any of these, split it. Target 3–12 steps total. If the objective naturally decomposes into fewer than 3 steps but each step is non-trivial (multiple files, CI requirements), a 2-step plan is acceptable — do not artificially split to reach the target. If the objective requires more than 12, split into sequential plans — each plan covers one coherent milestone.
 2. For each step, decide:
    - Can it run in parallel with other steps? → draw dependency edges.
    - Does it modify shared files? → must be serial with other steps touching those files.
@@ -108,7 +109,7 @@ Make architectural and sequencing decisions.
 
 ## Phase 3 — Draft
 
-Write the plan file at `plans/{project}-{objective-slug}.md` following the template below. Generate the slug from the objective: lowercase, replace spaces with hyphens, strip non-alphanumeric characters except hyphens, truncate to 40 characters. Example: "Extract providers into plugins" → `extract-providers-into-plugins`. Full filename example: `plans/myapp-extract-providers-into-plugins.md`.
+Write the plan file at `plans/{project}-{objective-slug}.md` (create the `plans/` directory if it does not exist: `mkdir -p plans`) following the template below. Generate the slug from the objective: lowercase, replace spaces with hyphens, strip characters that are not ASCII alphanumeric (a-z, 0-9) or hyphens, collapse consecutive hyphens into one, trim leading/trailing hyphens, truncate to 40 characters. If the slug is empty after processing (common for non-Latin objectives like Chinese), use `plan-NN` as fallback where NN is the next available two-digit sequence number (check existing files in `plans/` to avoid collision). Example: "Extract providers into plugins" → `extract-providers-into-plugins`. Full filename example: `plans/myapp-extract-providers-into-plugins.md`.
 
 The plan must be **fully self-contained** — an executing agent reads only the plan file and the project's CLAUDE.md. All branch workflow rules, CI policy, and review gates must be written directly into the plan. Do not reference external documents for critical workflow rules.
 
@@ -128,14 +129,14 @@ Include an **Operational References** section at the bottom of the generated pla
 
 Delegate adversarial review of the complete plan to an **Opus sub-agent**. If the Opus sub-agent fails (API error, timeout, unavailable model), retry once. On second failure, fall back to Sonnet and add a warning to the Review Log: "Reviewed by Sonnet — reduced review depth." Never block plan creation on review infrastructure failure.
 
-Read `references/review-checklist.md` and execute each item against the plan.
+Read `references/review-checklist.md` and `references/anti-patterns.md`. Include both documents in full in the Opus sub-agent's prompt so it can execute each checklist item against the plan. The sub-agent does not have access to the skill's installation directory — all review criteria and anti-pattern definitions must be passed inline.
 
 Fix all critical and important findings. Log everything in Review Log.
 
 ## Phase 5 — Register
 
 1. Save the plan file (written in Phase 3, refined in Phase 4 via Edit tool).
-2. If `memory/MEMORY.md` exists, update it: add a plan entry under the relevant project with `created: {date}` and brief description. If absent, skip memory registration.
+2. If `memory/MEMORY.md` exists, update it: add a plan entry under the relevant project with `created: {date}` and brief description. If the file does not exist, skip memory registration.
 3. Present to user:
    - Plan file path
    - Step count and estimated parallelism
