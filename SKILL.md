@@ -84,6 +84,8 @@ If pre-flight checks set workflow mode to "direct" (non-git or no gh auth), read
 
 Before finalizing, scan `references/anti-patterns.md` and verify the plan does not contain any listed anti-pattern.
 
+Include an **Operational References** section at the bottom of the generated plan with inline summaries of the mutation and resumption protocols. Do not use file paths to the skill directory — the executing agent does not know where the skill is installed. Use the inline summaries from the plan template (read `references/plan-template.md` or `references/plan-template-light.md` — the section is already included at the bottom). The full protocol files are `workflows/plan-mutation.md` and `workflows/resumption.md` — read these during plan creation to ensure the summaries are accurate.
+
 ## Phase 4 — Review
 
 Delegate adversarial review of the complete plan to an **Opus sub-agent**. If the Opus sub-agent fails (API error, timeout, unavailable model), retry once. On second failure, fall back to Sonnet and add a warning to the Review Log: "Reviewed by Sonnet — reduced review depth." Never block plan creation on review infrastructure failure.

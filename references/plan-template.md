@@ -114,6 +114,8 @@ Must be self-contained with Design Decisions + Invariants.}
 
 ## Progress Log
 
+This table is the single source of truth for execution state.
+
 | Step | Status | Branch | PR  | Notes |
 |------|--------|--------|-----|-------|
 | 01   | [ ]    | —      | —   | —     |
@@ -121,3 +123,28 @@ Must be self-contained with Design Decisions + Invariants.}
 ## Review Log
 
 - **{date}**: {reviewer} — {summary of findings and fixes}
+
+---
+
+## Operational References
+
+### Plan Mutation
+
+When execution diverges from the plan structure, mutate the plan and record the change:
+
+- **Split**: rename Step N → Step Na, create Step Nb. Update dependency graph. Log reason in Progress Log.
+- **Insert**: use letter suffix (e.g., Step 05a) to avoid renumbering. New step must pass cold-start test (self-contained Context).
+- **Skip**: mark `[SKIP]` with reason. Never delete — skipped steps are historical record that prevents re-attempting failed approaches.
+- **Reorder**: only if dependency graph allows. Verify no step reads output from a step that now executes after it.
+- **Abandon**: mark `## Status: ABANDONED — {reason}`. Log lessons in Review Log. Do not delete the file.
+- **Scope change**: >50% of remaining steps affected → ask user whether to continue mutating or create a new plan.
+
+### Resumption
+
+To resume a partially-executed plan in a new session:
+
+1. Read the plan file (objective, constraints, invariants, dependency graph).
+2. Read Progress Log — find last `[x]` step and any `[>]` step.
+3. If a step is `[>]`: check branch state. If branch exists with commits, assess completion against exit criteria. If no branch, treat as `[ ]`.
+4. Read Review Log for context on past issues and decisions.
+5. Resume from the first `[ ]` or `[>]` step. Do not re-execute `[x]` or `[SKIP]` steps.
