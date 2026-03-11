@@ -1,6 +1,6 @@
 ![Blueprint — plans for coding agents](https://github.com/user-attachments/assets/23587ca9-1b58-4257-950d-0a1c144592ef)
 
-> [!IMPORTANT]
+> [!TIP]
 > Any agent can follow a plan. The hard part is writing steps that don't assume the agent read the ones before. Blueprint generates plans from a one-line objective — each step carries enough context to be executed cold, by a different agent in a different session.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -53,7 +53,7 @@ bridge that decouples core from the scheduler implementation.
 All tests pass with mock scheduler registration.
 ```
 
-The **Context** field is the key — it tells a cold-start agent exactly what state the codebase is in and what this step does, without reading prior steps. Task markers: `[guided]` = agent decides the approach; `[exact]` = run this command verbatim.
+The **Context** field is the key — it tells a cold-start agent exactly what state the codebase is in and what this step does, without reading prior steps. Task markers: `[exact]` = run this command verbatim; `[guided]` = agent decides the approach; `[open]` = goal only, full autonomy.
 
 </details>
 
@@ -100,7 +100,7 @@ The generated plans are standard Markdown files. Any agent that can read files c
 /blueprint myapp "migrate database to PostgreSQL"
 ```
 
-This scans your codebase, designs a step-by-step plan, reviews it with a strongest-model sub-agent (falls back to default model if unavailable), and saves it to `plans/myapp-migrate-to-postgresql.md`.
+This scans your codebase, designs a step-by-step plan, reviews it with a strongest-model sub-agent (falls back to default model if unavailable), and saves it to `plans/myapp-migrate-database-to-postgresql.md`.
 
 ## Key Features
 
@@ -131,8 +131,8 @@ Claude Code's built-in `/plan` works well for straightforward tasks. Persistent-
 | Plan mutation protocol | No | No | Yes — split, insert, skip, reorder, abandon |
 | Model tier assignment | No | No | Yes — strongest vs default per step |
 | Anti-pattern detection | No | No | Yes — catalog scanned before finalization |
-| Autonomy boundaries | No | No | Yes — guided vs exact task markers |
-| Zero runtime risk | N/A | Hooks execute on every tool call | Yes — pure markdown, no hooks, no scripts |
+| Autonomy boundaries | No | No | Yes — exact, guided, and open task markers |
+| Zero runtime risk | Yes | Hooks execute on every tool call | Yes — pure markdown, no hooks, no scripts |
 
 ### When to use what
 
@@ -167,7 +167,7 @@ What you install is what you read — markdown instructions, reference templates
 ## How It Works
 
 1. **Research** — Scans the codebase, reads project memory if available, runs pre-flight checks (git repo, gh auth, default branch).
-2. **Design** — Breaks the objective into one-PR-sized steps, identifies parallelism, assigns model tiers (strongest for architecture, default for implementation), marks risky steps for worktree isolation.
+2. **Design** — Breaks the objective into one-PR-sized steps, identifies parallelism, assigns model tiers (strongest for architecture, default for implementation), assigns isolation strategy (main-tree preferred; worktree only for destructive or exploratory steps).
 3. **Draft** — Generates the plan from a structured template. Includes branch workflow rules, CI policy, invariants, and rollback strategies — all inline, fully self-contained.
 4. **Review** — Delegates adversarial review to a strongest-model sub-agent. Issues are fixed and re-reviewed until the plan passes.
 5. **Register** — Saves the plan and updates project memory.
